@@ -8,12 +8,14 @@ bool IdentityStore::load(const char *name, mesh::LocalIdentity& id) {
 #if defined(RP2040_PLATFORM)
     File file = _fs->open(filename, "r");
 #else
+    MESH_DEBUG_PRINTLN("IdentityStore::load: opening file '%s'", filename);
     File file = _fs->open(filename);
 #endif
     if (file) {
       loaded = id.readFrom(file);
       file.close();
     }
+    MESH_DEBUG_PRINTLN("IdentityStore::load() read - %s", loaded ? "OK" : "Err");
   }
   return loaded;
 }
@@ -26,6 +28,7 @@ bool IdentityStore::load(const char *name, mesh::LocalIdentity& id, char display
 #if defined(RP2040_PLATFORM)
     File file = _fs->open(filename, "r");
 #else
+    MESH_DEBUG_PRINTLN("IdentityStore::load: (displayname) opening file '%s'", filename);
     File file = _fs->open(filename);
 #endif
     if (file) {
@@ -38,6 +41,7 @@ bool IdentityStore::load(const char *name, mesh::LocalIdentity& id, char display
 
       file.close();
     }
+    MESH_DEBUG_PRINTLN("IdentityStore::load() (displayname) read - %s", loaded ? "OK" : "Err");
   }
   return loaded;
 }
@@ -47,7 +51,9 @@ bool IdentityStore::save(const char *name, const mesh::LocalIdentity& id) {
   sprintf(filename, "%s/%s.id", _dir, name);
 
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+  MESH_DEBUG_PRINTLN("IdentityStore::save: removing file '%s'", filename);
   _fs->remove(filename);
+  MESH_DEBUG_PRINTLN("IdentityStore::save: opening file '%s'", filename);
   File file = _fs->open(filename, FILE_O_WRITE);
 #elif defined(RP2040_PLATFORM)
   File file = _fs->open(filename, "w");
@@ -69,7 +75,9 @@ bool IdentityStore::save(const char *name, const mesh::LocalIdentity& id, const 
   sprintf(filename, "%s/%s.id", _dir, name);
 
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+  MESH_DEBUG_PRINTLN("IdentityStore::save: (displayname) removing file '%s'", filename);
   _fs->remove(filename);
+  MESH_DEBUG_PRINTLN("IdentityStore::save: (displayname) opening file '%s'", filename);
   File file = _fs->open(filename, FILE_O_WRITE);
 #elif defined(RP2040_PLATFORM)
   File file = _fs->open(filename, "w");
@@ -89,5 +97,6 @@ bool IdentityStore::save(const char *name, const mesh::LocalIdentity& id, const 
     file.close();
     return true;
   }
+  MESH_DEBUG_PRINTLN("IdentityStore::save() (displayname) failed");
   return false;
 }

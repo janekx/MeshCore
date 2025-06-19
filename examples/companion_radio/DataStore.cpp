@@ -14,6 +14,7 @@ DataStore::DataStore(FILESYSTEM& fs, mesh::RTCClock& clock) : _fs(&fs), _clock(&
 
 static File openWrite(FILESYSTEM* _fs, const char* filename) {
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+  MESH_DEBUG_PRINTLN("DataStore::openWrite: removing file '%s'", filename);
   _fs->remove(filename);
   return _fs->open(filename, FILE_O_WRITE);
 #elif defined(RP2040_PLATFORM)
@@ -44,6 +45,7 @@ void DataStore::begin() {
 
 File DataStore::openRead(const char* filename) {
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+  MESH_DEBUG_PRINTLN("DataStore::openRead: opening file '%s'", filename);
   return _fs->open(filename, FILE_O_READ);
 #elif defined(RP2040_PLATFORM)
   return _fs->open(filename, "r");
@@ -58,7 +60,9 @@ bool DataStore::removeFile(const char* filename) {
 
 bool DataStore::formatFileSystem() {
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+  MESH_DEBUG_PRINTLN("DataStore::formatFileSystem: formatting filesystem");
   return _fs->format();
+  MESH_DEBUG_PRINTLN("DataStore::formatFileSystem: format done");
 #elif defined(RP2040_PLATFORM)
   return LittleFS.format();
 #elif defined(ESP32)
@@ -277,6 +281,7 @@ struct BlobRec {
 
 void DataStore::checkAdvBlobFile() {
   if (!_fs->exists("/adv_blobs")) {
+    MESH_DEBUG_PRINTLN("DataStore::checkAdvBlobFile: adv_blobs file not found, creating...");
     File file = openWrite(_fs, "/adv_blobs");
     if (file) {
       BlobRec zeroes;
@@ -285,6 +290,9 @@ void DataStore::checkAdvBlobFile() {
         file.write((uint8_t *) &zeroes, sizeof(zeroes));
       }
       file.close();
+      MESH_DEBUG_PRINTLN("DataStore::checkAdvBlobFile: created adv_blobs file");
+    } else {
+      MESH_DEBUG_PRINTLN("DataStore::checkAdvBlobFile: failed to create adv_blobs file");
     }
   }
 }
@@ -303,6 +311,9 @@ uint8_t DataStore::getBlobByKey(const uint8_t key[], int key_len, uint8_t dest_b
       }
     }
     file.close();
+    MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: wrote to adv_blobs file");
+  } else {
+    MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: failed to open adv_blobs file");
   }
   return len;
 }
@@ -343,6 +354,8 @@ bool DataStore::putBlobByKey(const uint8_t key[], int key_len, const uint8_t src
 
     file.close();
     return true;
+  } else {
+    MESH_DEBUG_PRINTLN("DataStore::putBlobByKey: failed to open adv_blobs file");
   }
   return false; // error
 }
