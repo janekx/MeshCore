@@ -184,6 +184,7 @@ void DataStore::loadContacts(DataStoreHost* host) {
         if (!host->onContactLoaded(c)) full = true;
       }
       file.close();
+      MESH_DEBUG_PRINTLN("DataStore::loadContacts: loaded contacts");
     }
   }
 }
@@ -191,6 +192,7 @@ void DataStore::loadContacts(DataStoreHost* host) {
 void DataStore::saveContacts(DataStoreHost* host) {
   File file = openWrite(_fs, "/contacts3");
   if (file) {
+    MESH_DEBUG_PRINTLN("DataStore::saveContacts: saving contacts");
     uint32_t idx = 0;
     ContactInfo c;
     uint8_t unused = 0;
@@ -214,11 +216,13 @@ void DataStore::saveContacts(DataStoreHost* host) {
       idx++;  // advance to next contact
     }
     file.close();
+    MESH_DEBUG_PRINTLN("DataStore::saveContacts: wrote %d contacts", idx);
   }
 }
 
 void DataStore::loadChannels(DataStoreHost* host) {
   if (_fs->exists("/channels2")) {
+    MESH_DEBUG_PRINTLN("DataStore::loadChannels: loading channels from /channels2");
 #if defined(RP2040_PLATFORM)
     File file = _fs->open("/channels2", "r");
 #else
@@ -244,6 +248,7 @@ void DataStore::loadChannels(DataStoreHost* host) {
         }
       }
       file.close();
+      MESH_DEBUG_PRINTLN("DataStore::loadChannels: loaded %d channels", channel_idx);
     }
   }
 }
@@ -265,6 +270,7 @@ void DataStore::saveChannels(DataStoreHost* host) {
       channel_idx++;
     }
     file.close();
+    MESH_DEBUG_PRINTLN("DataStore::saveChannels: wrote %d channels", channel_idx);
   }
 }
 
@@ -280,6 +286,7 @@ struct BlobRec {
 };
 
 void DataStore::checkAdvBlobFile() {
+  MESH_DEBUG_PRINTLN("DataStore::checkAdvBlobFile: checking adv_blobs file");
   if (!_fs->exists("/adv_blobs")) {
     MESH_DEBUG_PRINTLN("DataStore::checkAdvBlobFile: adv_blobs file not found, creating...");
     File file = openWrite(_fs, "/adv_blobs");
@@ -295,9 +302,13 @@ void DataStore::checkAdvBlobFile() {
       MESH_DEBUG_PRINTLN("DataStore::checkAdvBlobFile: failed to create adv_blobs file");
     }
   }
+  MESH_DEBUG_PRINTLN("DataStore::checkAdvBlobFile: adv_blobs file exists");
 }
 
 uint8_t DataStore::getBlobByKey(const uint8_t key[], int key_len, uint8_t dest_buf[]) {
+  char key_hex[63];
+  mesh::Utils::toHex(key_hex, key, key_len);
+  MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: looking for key '%s'", key_hex);
   File file = _fs->open("/adv_blobs");
   uint8_t len = 0;  // 0 = not found
 
@@ -307,11 +318,13 @@ uint8_t DataStore::getBlobByKey(const uint8_t key[], int key_len, uint8_t dest_b
       if (memcmp(key, tmp.key, sizeof(tmp.key)) == 0) {  // only match by 7 byte prefix
         len = tmp.len;
         memcpy(dest_buf, tmp.data, len);
+        MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: found key '%s'", key_hex);
         break;
+      } else {
+        MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: key '%s' not found in adv_blobs", key_hex);
       }
     }
     file.close();
-    MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: wrote to adv_blobs file");
   } else {
     MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: failed to open adv_blobs file");
   }
@@ -322,7 +335,10 @@ bool DataStore::putBlobByKey(const uint8_t key[], int key_len, const uint8_t src
   if (len < PUB_KEY_SIZE+4+SIGNATURE_SIZE || len > MAX_ADVERT_PKT_LEN) return false;
 
   checkAdvBlobFile();
-
+  
+  char key_hex[63];
+   mesh::Utils::toHex(key_hex, key, key_len);
+  MESH_DEBUG_PRINTLN("DataStore::putBlobByKey: opening adv_blobs file to write key '%s'", key_hex);
   File file = _fs->open("/adv_blobs", FILE_O_WRITE);
   if (file) {
     uint32_t pos = 0, found_pos = 0;
@@ -350,9 +366,11 @@ bool DataStore::putBlobByKey(const uint8_t key[], int key_len, const uint8_t src
     tmp.timestamp = _clock->getCurrentTime();
 
     file.seek(found_pos);
+    MESH_DEBUG_PRINTLN("DataStore::putBlobByKey: writing key '%s'", key_hex);
     file.write((uint8_t *) &tmp, sizeof(tmp));
 
     file.close();
+    MESH_DEBUG_PRINTLN("DataStore::putBlobByKey: wrote key '%s'", key_hex);
     return true;
   } else {
     MESH_DEBUG_PRINTLN("DataStore::putBlobByKey: failed to open adv_blobs file");
