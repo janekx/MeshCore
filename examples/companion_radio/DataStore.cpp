@@ -82,6 +82,7 @@ bool DataStore::saveMainIdentity(const mesh::LocalIdentity &identity) {
 
 void DataStore::loadPrefs(NodePrefs& prefs, double& node_lat, double& node_lon) {
   if (_fs->exists("/new_prefs")) {
+    MESH_DEBUG_PRINTLN("DataStore::loadPrefs: loading prefs from '/new_prefs'");
     loadPrefsInt("/new_prefs", prefs, node_lat, node_lon); // new filename
   } else if (_fs->exists("/node_prefs")) {
     loadPrefsInt("/node_prefs", prefs, node_lat, node_lon);
@@ -91,6 +92,7 @@ void DataStore::loadPrefs(NodePrefs& prefs, double& node_lat, double& node_lon) 
 }
 
 void DataStore::loadPrefsInt(const char *filename, NodePrefs& _prefs, double& node_lat, double& node_lon) {
+MESH_DEBUG_PRINTLN("DataStore::loadPrefsInt: loading prefs from '%s'", filename);
 #if defined(RP2040_PLATFORM)
   File file = _fs->open(filename, "r");
 #else
@@ -119,10 +121,14 @@ void DataStore::loadPrefsInt(const char *filename, NodePrefs& _prefs, double& no
     file.read((uint8_t *)&_prefs.ble_pin, sizeof(_prefs.ble_pin));                         // 80
 
     file.close();
+    MESH_DEBUG_PRINTLN("DataStore::loadPrefsInt: loaded prefs from '%s'", filename);
+  } else {
+    MESH_DEBUG_PRINTLN("DataStore::loadPrefsInt: ERROR: could not open '%s' for reading!", filename);
   }
 }
 
 void DataStore::savePrefs(const NodePrefs& _prefs, double node_lat, double node_lon) {
+  MESH_DEBUG_PRINTLN("DataStore::savePrefs: opening file '/new_prefs' for writing");
   File file = openWrite(_fs, "/new_prefs");
   if (file) {
     uint8_t pad[8];
@@ -148,11 +154,15 @@ void DataStore::savePrefs(const NodePrefs& _prefs, double node_lat, double node_
     file.write((uint8_t *)&_prefs.ble_pin, sizeof(_prefs.ble_pin));                         // 80
 
     file.close();
+    MESH_DEBUG_PRINTLN("DataStore::savePrefs:  saved prefs to '/new_prefs'");
+  } else {
+    MESH_DEBUG_PRINTLN("DataStore::savePrefs: ERROR: could not open '/new_prefs' for writing");
   }
 }
 
 void DataStore::loadContacts(DataStoreHost* host) {
   if (_fs->exists("/contacts3")) {
+    MESH_DEBUG_PRINTLN("DataStore::loadContacts: loading contacts from /contacts3");
 #if defined(RP2040_PLATFORM)
     File file = _fs->open("/contacts3", "r");
 #else
@@ -186,6 +196,8 @@ void DataStore::loadContacts(DataStoreHost* host) {
       file.close();
       MESH_DEBUG_PRINTLN("DataStore::loadContacts: loaded contacts");
     }
+  } else {
+    MESH_DEBUG_PRINTLN("DataStore::loadContacts: no contacts file found!");
   }
 }
 
@@ -217,6 +229,8 @@ void DataStore::saveContacts(DataStoreHost* host) {
     }
     file.close();
     MESH_DEBUG_PRINTLN("DataStore::saveContacts: wrote %d contacts", idx);
+  } else {
+    MESH_DEBUG_PRINTLN("DataStore::saveContacts: failed to open contacts file for writing!");
   }
 }
 
@@ -250,6 +264,8 @@ void DataStore::loadChannels(DataStoreHost* host) {
       file.close();
       MESH_DEBUG_PRINTLN("DataStore::loadChannels: loaded %d channels", channel_idx);
     }
+  } else {
+    MESH_DEBUG_PRINTLN("DataStore::loadChannels: no channels file found!");
   }
 }
 
@@ -320,11 +336,14 @@ uint8_t DataStore::getBlobByKey(const uint8_t key[], int key_len, uint8_t dest_b
         memcpy(dest_buf, tmp.data, len);
         MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: found key '%s'", key_hex);
         break;
-      } else {
-        MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: key '%s' not found in adv_blobs", key_hex);
       }
     }
+    if (len == 0) {
+      MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: key '%s' not found", key_hex);
+    }
     file.close();
+    MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: adv_blobs file closed");
+
   } else {
     MESH_DEBUG_PRINTLN("DataStore::getBlobByKey: failed to open adv_blobs file");
   }
