@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "PromicroBoard.h"
+#include "SimpleHardwareTimer.h"
 
 #include <bluefruit.h>
 #include <Wire.h>
@@ -16,12 +17,15 @@ void PromicroBoard::begin() {
     #ifdef BUTTON_PIN
       pinMode(BUTTON_PIN, INPUT_PULLUP);
     #endif
+    sd_power_mode_set(NRF_POWER_MODE_LOWPWR);
+
 
     #if defined(PIN_BOARD_SDA) && defined(PIN_BOARD_SCL)
       Wire.setPins(PIN_BOARD_SDA, PIN_BOARD_SCL);
     #endif
     
     Wire.begin();
+    SimpleHardwareTimer::init();
 
     pinMode(SX126X_POWER_EN, OUTPUT);
     digitalWrite(SX126X_POWER_EN, HIGH);
@@ -38,6 +42,92 @@ static void disconnect_callback(uint16_t conn_handle, uint8_t reason) {
     (void)reason;
     MESH_DEBUG_PRINTLN("BLE client disconnected");
 }
+
+void PromicroBoard::loop() {
+  static uint32_t last_sleep_check = 0;
+  uint32_t now = millis();
+  
+  // Light sleep check every second
+  if (now - last_sleep_check > 1000) {
+    #ifdef PIN_BUZZER
+    if (!rtttl::isPlaying()) {
+      enterLightSleep(500);
+      wakeFromSleep();
+    }
+    #else
+    enterLightSleep(500);
+    wakeFromSleep();
+    #endif
+    
+    last_sleep_check = now;
+  }
+}
+
+void PromicroBoard::enterLightSleep(uint32_t timeout_ms) {
+  // Skip sleep if buzzer is active
+#ifdef PIN_BUZZER
+  if (rtttl::isPlaying()) {
+    return;
+  }
+#endif
+
+  // Configure button wake-up
+#ifdef BUTTON_PIN
+  nrf_gpio_cfg_sense_input(
+    digitalPinToInterrupt(BUTTON_PIN),
+    NRF_GPIO_PIN_PULLDOWN,
+    NRF_GPIO_PIN_SENSE_HIGH
+  );
+#endif
+
+  if (timeout_ms == 0) {
+    sd_app_evt_wait();
+    return;
+  }
+
+  // Controlled sleep loop with timeout handling
+  uint32_t sleep_start = millis();
+  
+  while ((millis() - sleep_start) < timeout_ms) {
+    // Check for immediate wake conditions
+#ifdef BUTTON_PIN
+    if (digitalRead(BUTTON_PIN) == HIGH) {
+      return;
+    }
+#endif
+    
+#ifdef PIN_BUZZER
+    if (rtttl::isPlaying()) {
+      return;
+    }
+#endif
+    
+    uint32_t elapsed = millis() - sleep_start;
+    if (elapsed >= timeout_ms) {
+      break;
+    }
+    
+    sd_app_evt_wait();
+    
+#ifdef PIN_BUZZER
+    if (rtttl::isPlaying()) {
+      return;
+    }
+#endif
+    
+    if ((millis() - sleep_start) >= timeout_ms) {
+      break;
+    }
+  }
+}
+
+void PromicroBoard::wakeFromSleep() {
+  // Clean up GPIO configuration
+#ifdef BUTTON_PIN
+  nrf_gpio_cfg_input(digitalPinToInterrupt(BUTTON_PIN), NRF_GPIO_PIN_NOPULL);
+#endif
+}
+
 
 bool PromicroBoard::startOTAUpdate(const char* id, char reply[]) {
   // Config the peripheral connection with maximum bandwidth

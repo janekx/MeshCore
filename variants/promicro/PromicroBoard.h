@@ -2,6 +2,8 @@
 
 #include <MeshCore.h>
 #include <Arduino.h>
+#include <nrf_gpio.h>
+// #include <bluefruit.h>
 
 #define P_LORA_NSS 13 //P1.13 45
 #define P_LORA_DIO_1 11 //P0.10 10
@@ -17,7 +19,7 @@
 #define SX126X_DIO3_TCXO_VOLTAGE (1.8f)
 
 #define  PIN_VBAT_READ 17
-#define  ADC_MULTIPLIER   (1.815f) // dependent on voltage divider resistors. TODO: more accurate battery tracking
+#define  ADC_MULTIPLIER   (2.276f) // dependent on voltage divider resistors. TODO: more accurate battery tracking
 
 class PromicroBoard : public mesh::MainBoard {
 protected:
@@ -26,6 +28,7 @@ protected:
 
 public:
   void begin();
+  void loop(); // Power management
 
   uint8_t getStartupReason() const override { return startup_reason; }
 
@@ -60,6 +63,8 @@ public:
   void reboot() override {
     NVIC_SystemReset();
   }
+  void enterLightSleep(uint32_t timeout_ms = 0);
+  void wakeFromSleep();
 
   bool startOTAUpdate(const char* id, char reply[]) override;
 };
