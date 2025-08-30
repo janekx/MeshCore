@@ -149,8 +149,8 @@ extern "C"
 #define PIN_3V3_EN (34)
 
 // RAK WISMESHTAG
-#define PIN_GPS_EN PIN_3V3_EN
-#define PIN_GPS_PPS (17) // Pulse per second input from the GPS
+//#define PIN_GPS_EN PIN_3V3_EN
+//#define PIN_GPS_PPS (17) // Pulse per second input from the GPS
 
 #define GPS_RX_PIN PIN_SERIAL1_RX
 #define GPS_TX_PIN PIN_SERIAL1_TX
